@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Дракончики с Газового острова</title>
+<style>
+:root{--bg:#f3f7fb;--card:#fff;--ink:#1f2d3d;--blue:#2d6cdf;--green:#2e9e5b;--orange:#f08a24;--soft:#e6eefb}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:22px}
+.wrap{max-width:820px;margin:0 auto;padding:16px}
+.card{background:var(--card);border-radius:20px;padding:20px;box-shadow:0 2px 10px #0001;margin-bottom:16px}
+h1{font-size:34px;margin:6px 0}h2{font-size:28px;margin:4px 0 12px}
+button{font:inherit;border:none;border-radius:16px;padding:16px 22px;margin:6px;cursor:pointer;background:var(--blue);color:#fff;min-width:140px;min-height:64px}
+button:hover{filter:brightness(1.08)}button:focus{outline:4px solid #ffd54a}
+button.alt{background:#fff;color:var(--ink);border:3px solid var(--blue)}
+button.big{font-size:30px;min-width:220px;min-height:110px}
+button.ok{background:var(--green)}button.soft{background:var(--soft);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;justify-content:center;align-items:center}
+.msg{min-height:56px;font-size:26px;text-align:center;margin:10px 0;font-weight:600}
+.good{color:var(--green)}.try{color:var(--orange)}
+.stars{font-size:32px;text-align:center;letter-spacing:4px}
+.emoji{font-size:90px;text-align:center;line-height:1.1}
+.prog{height:16px;background:var(--soft);border-radius:8px;overflow:hidden;margin:8px 0}
+.prog>i{display:block;height:100%;background:var(--green);width:0;transition:width .4s}
+table{border-collapse:collapse;width:100%;font-size:19px}td,th{border:2px solid #cbd7ea;padding:8px;text-align:center}
+input[type=text],input[type=number]{font:inherit;padding:12px;border:3px solid var(--blue);border-radius:12px;width:180px;text-align:center}
+.small{font-size:17px;color:#51627a}
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+#balloon{font-size:130px;transition:transform .25s;display:inline-block}
+.hint{background:#fff8e1;border-radius:12px;padding:10px;font-size:20px}
+@media print{.top,button,.small,#rep ~ *{display:none!important}body{background:#fff;font-size:16px}.card{box-shadow:none}.card:not(#rep){display:none}input,select{border:none!important}}</style></head><body><div class="wrap">
+<div class="top"><h1>🐉 Дракончики</h1><div><button class="soft" onclick="home()">🏠 Меню</button><button class="soft" id="vc" onclick="toggleVoice()">🗣️ Озвучка вкл.</button><button class="soft" onclick="glossary()">📖 Словарик</button><button class="soft" id="snd" onclick="toggleSound()">🔇 Звуки выкл.</button></div></div>
+<div id="app"></div>
+<p class="small">Тут нельзя проиграть. Кнопка «🔊 Прочитать» читает текст вслух; озвучку можно выключить вверху. Ошибся — попробуй ещё раз. Подсказка всегда рядом.</p>
+</div>
+<script>
+const $=id=>document.getElementById(id);const app=$('app');
+let sound=false,stars=0,AC;
+function beep(f,d=0.15){if(!sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=0.08;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+function toggleSound(){sound=!sound;$('snd').textContent=sound?'🔊 Звуки вкл.':'🔇 Звуки выкл.';beep(660)}
+const praise=['Молодец!','Отлично!','Правильно!','Супер!','Здорово!'];
+const rp=()=>praise[Math.floor(Math.random()*praise.length)];
+const shuffle=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+function starsHTML(){return '⭐'.repeat(stars)||'☆'}
+
+let voice=true;
+function say(t){if(!voice||!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t.replace(/<[^>]+>/g,' ').replace(/[₁₂]/g,m=>m=='₁'?' один':' два').replace(/\*/g,' умножить на ').replace(/=/g,' равно '));u.lang='ru-RU';u.rate=0.85;const v=speechSynthesis.getVoices().find(x=>x.lang&&x.lang.startsWith('ru'));if(v)u.voice=v;speechSynthesis.speak(u)}catch(e){}}
+function sayNow(t){const o=voice;voice=true;say(t);voice=o}
+function toggleVoice(){voice=!voice;$('vc').textContent=voice?'🗣️ Озвучка вкл.':'🗣️ Озвучка выкл.';if(voice)say('Озвучка включена');else if('speechSynthesis' in window)speechSynthesis.cancel()}
+function rb(t){return `<button class="soft" onclick="sayNow(this.dataset.t)" data-t="${t.replace(/"/g,'&quot;').replace(/<[^>]+>/g,' ')}">🔊 Прочитать</button>`}
+const LESSONS={
+low:[
+{e:'🌬️',t:'Воздух',x:'Вокруг нас есть воздух. Воздух — это газ. Его не видно, но он есть.'},
+{e:'🎈',t:'Шарик',x:'Мы надуваем шарик, и внутри шарика воздух. Шарик большой, потому что в нём много воздуха.'},
+{e:'🫧',t:'Пузыри',x:'Мы дуем в трубочку, и в воде появляются пузыри. В пузырях воздух.'},
+{e:'⚠️',t:'Осторожно',x:'Шарик и пузыри нельзя брать в рот. Розетку нельзя трогать. Горячее трогать нельзя без взрослого.'}],
+mid1:[
+{e:'🌫️',t:'Что такое газ',x:'Газ — это вещество, которое заполняет всё место, где оно находится. Воздух — это смесь газов. Газ можно сжать.'},
+{e:'🔥',t:'Температура',x:'Температура показывает, горячее вещество или холодное. Когда газ нагревают, его частицы двигаются быстрее.'},
+{e:'🎈',t:'Объём',x:'Объём — это сколько места занимает газ. Когда газ нагрели, объём становится больше. Когда охладили, объём становится меньше.'},
+{e:'💪',t:'Давление',x:'Давление — это насколько сильно газ давит на стенки. Если газ сжать, давление растёт. Если в шину добавить воздух, давление тоже растёт.'}],
+mid2:[
+{e:'📏',t:'Три величины газа',x:'У газа три главные величины. Давление p. Объём V. Температура T. Температура в формулах записывается в кельвинах. Чтобы перевести градусы Цельсия в кельвины, нужно прибавить двести семьдесят три.'},
+{e:'🧊',t:'Изотермический процесс',x:'Изо — значит одинаковый. Терм — значит тепло. В изотермическом процессе температура не меняется. Закон Бойля и Мариотта: давление умножить на объём остаётся одинаковым. Если объём уменьшили в два раза, давление выросло в два раза.'},
+{e:'📈',t:'Изобарный процесс',x:'Бар — значит давление. В изобарном процессе давление не меняется. Закон Гей-Люссака: объём делить на температуру остаётся одинаковым. Нагрели газ — объём вырос.'},
+{e:'🧯',t:'Изохорный процесс',x:'Хор — значит место, объём. В изохорном процессе объём не меняется, например газ в закрытом баллоне. Закон Шарля: давление делить на температуру остаётся одинаковым. Нагрели баллон — давление выросло.'},
+{e:'🚫',t:'Адиабатный процесс',x:'Адиабатный процесс идёт без обмена теплом с окружающей средой. Например, очень быстро сжали воздух в насосе. Газ при сжатии нагревается.'},
+{e:'🧮',t:'Как решать задачу',x:'Сначала запиши Дано. Потом Найти. Выбери формулу с карточки. Подставь числа. Запиши ответ с единицами измерения.'}]};
+let lessonKey,lessonI,lessonNext;
+function lesson(k,next){lessonKey=k;lessonI=0;lessonNext=next;showLesson()}
+function showLesson(){const L=LESSONS[lessonKey],x=L[lessonI];
+app.innerHTML=`<div class="card"><div class="prog"><i style="width:${(lessonI+1)/L.length*100}%"></i></div><div class="emoji">${x.e}</div><h2 style="text-align:center">${x.t}</h2><p style="text-align:center;font-size:26px">${x.x}</p>
+<div class="row">${rb(x.t+'. '+x.x)}</div>
+<div class="row">${lessonI>0?'<button class="alt" onclick="lessonI--;showLesson()">⬅ Назад</button>':''}
+${lessonI<L.length-1?'<button class="ok" onclick="lessonI++;showLesson()">Дальше ➜</button>':'<button class="ok" onclick="'+lessonNext+'">🎮 Играть!</button>'}</div></div>`;say(x.t+'. '+x.x)}
+function glossary(){const GL=[0,1,2,3];const all0=[['Газ','вещество без своей формы; заполняет всё место'],['Давление p','насколько сильно газ давит на стенки'],['Объём V','сколько места занимает газ'],['Температура T','насколько горячее или холодное; в формулах в кельвинах'],['Изотермический','температура не меняется: p·V = const'],['Изобарный','давление не меняется: V/T = const'],['Изохорный','объём не меняется: p/T = const'],['Адиабатный','нет обмена теплом с окружающей средой']];
+const all=all0.filter((a,i)=>GL.includes(i));app.innerHTML='<div class="card"><h2>📖 Словарик</h2><table>'+all.map(a=>`<tr><td><b>${a[0]}</b></td><td>${a[1]}</td><td>${rb(a[0]+'. '+a[1])}</td></tr>`).join('')+'</table><div class="row"><button class="alt" onclick="home()">В меню</button></div></div>'}
+
+function home(){
+app.innerHTML=`<div class="card"><h2>Выбери уровень</h2><div class="row">
+<button class="big" onclick="lesson('low','startLow()')">🌬️<br>Воздух есть</button>
+<button class="big" onclick="lesson('mid1','startMid1()')">🎈<br>Что с газом?</button>
+<button class="big" onclick="lesson('mid2','startMid2()')">🧪<br>Газовые законы</button></div>
+<p class="stars" id="st">${starsHTML()}</p>
+<p class="small">Педагог или тьютор помогает выбрать уровень по РУП: низкий / ниже среднего / средний.</p></div>`}
+function done(next){stars++;app.innerHTML=`<div class="card"><div class="emoji">🏆</div><h2 style="text-align:center">Ты прошёл игру!</h2><p class="stars">${starsHTML()}</p><div class="row"><button class="ok" onclick="${next}">Играть ещё</button><button class="alt" onclick="home()">В меню</button></div></div>`;beep(880,.4)}
+
+/* ---------- LOW ---------- */
+const lowQ=[
+{e:'🎈',q:'Что внутри шарика?',a:['Воздух','Ничего'],c:0},
+{e:'🫧',q:'Что получилось, когда подули в трубочку?',a:['Пузыри','Ничего'],c:0},
+{e:'💨',q:'Где есть ветер?',a:['У вентилятора','У стола'],c:0},
+{e:'🚲',q:'Что внутри шины?',a:['Воздух','Камни'],c:0},
+{e:'⚠️',q:'Покажи знак «осторожно»',a:['⚠️','🙂'],c:0,pic:true},
+{e:'🫧',q:'Мыльный пузырь большой или маленький?',a:['Большой','Маленький'],c:0}
+];
+let li=0;
+function startLow(){li=0;lowBalloon()}
+function lowBalloon(){let n=0;
+app.innerHTML=`<div class="card"><h2>Надуй шарик! Нажимай на насос</h2><div class="emoji"><span id="balloon">🎈</span></div>
+<div class="prog"><i id="pb"></i></div><div class="msg" id="m">Нажми на насос 5 раз</div>
+<div class="row"><button class="big" id="pump">🛠️ Насос</button></div></div>`;
+$('pump').onclick=()=>{n++;beep(300+n*60);$('balloon').style.transform=`scale(${1+n*0.18})`;$('pb').style.width=n*20+'%';
+if(n>=5){$('m').innerHTML='<span class="good">Шарик надулся! Внутри воздух!</span>';beep(880,.3);$('pump').style.display='none';
+app.querySelector('.card').insertAdjacentHTML('beforeend','<div class="row"><button class="ok" onclick="lowAsk()">Дальше ➜</button></div>')}}}
+function lowAsk(){
+const x=lowQ[li];const opts=shuffle(x.a.map((t,i)=>({t,i})));
+app.innerHTML=`<div class="card"><div class="prog"><i style="width:${li/lowQ.length*100}%"></i></div><div class="emoji">${x.e}</div><h2 style="text-align:center">${x.q}</h2>
+<div class="msg" id="m"></div><div class="row">${rb(x.q+' '+x.a.join(' или '))}</div><div class="row">${opts.map(o=>`<button class="big" onclick="lowPick(${o.i===x.c},this)">${o.t}</button>`).join('')}</div></div>`;say(x.q+' '+x.a.join(' или '))}
+function lowPick(ok,b){if(ok){$('m').innerHTML='<span class="good">'+rp()+' ⭐</span>';say('Правильно!');beep(700);confetti();stars++;li++;
+setTimeout(()=>{if(li>=lowQ.length){stars--;done("lesson('low','startLow()')")}else lowAsk()},900)}
+else{$('m').innerHTML='<span class="try">Попробуй ещё раз. Посмотри внимательно 👀</span>';say('Попробуй ещё раз');b.style.opacity=.35;beep(250)}}
+
+/* ---------- BELOW-MID ---------- */
+const bq=[
+{e:'🎈🔥',q:'Шарик нагрели. Что с ним?',a:['Расширился','Сжался'],c:0,h:'Тёплый газ занимает больше места.'},
+{e:'💉',q:'Воздух в насосе сжали. Давление…',a:['Выросло','Упало'],c:0,h:'Газу тесно — он давит сильнее.'},
+{e:'🎈❄️',q:'Шарик положили в холод. Он…',a:['Уменьшился','Увеличился'],c:0,h:'Холодный газ занимает меньше места.'},
+{e:'🚲',q:'Шину накачали сильнее. Давление…',a:['Больше','Меньше'],c:0,h:'В шину добавили воздух.'},
+{e:'🫧',q:'Воздух в шарике — это…',a:['Газ','Твёрдое тело','Жидкость'],c:0,h:'Газ можно сжать и он заполняет весь объём.'},
+{e:'🧯',q:'Где газ сжат в баллоне?',a:['Огнетушитель','Подушка','Ложка'],c:0,h:'Баллон держит сжатый газ.'},
+{e:'☀️🎈',q:'Шарик оставили на солнце. Он может…',a:['Лопнуть','Стать твёрдым'],c:0,h:'Газ нагрелся и расширился.'}
+];
+let bi=0,bnext;
+function startMid1(){bi=0;bAsk()}
+function bAsk(){const x=bq[bi];const opts=shuffle(x.a.map((t,i)=>({t,i})));
+app.innerHTML=`<div class="card"><div class="prog"><i style="width:${bi/bq.length*100}%"></i></div><div class="emoji">${x.e}</div><h2 style="text-align:center">${x.q}</h2>
+<div class="msg" id="m"></div><div class="row">${rb(x.q+' '+x.a.join(' или '))}</div><div class="row">${opts.map(o=>`<button class="big" onclick="bPick(${o.i===x.c},this)">${o.t}</button>`).join('')}</div>
+<div class="row"><button class="soft" onclick="hnt++;$('hh').style.display='block';sayNow('${x.h}')">💡 Подсказка</button></div><div class="hint" id="hh" style="display:none">${x.h}</div></div>`;say(x.q+' '+x.a.join(' или '))}
+function bPick(ok,b){if(ok){$('m').innerHTML='<span class="good">'+rp()+' ⭐</span>';say('Правильно!');beep(700);confetti();stars++;bi++;
+setTimeout(()=>{if(bi>=bq.length){stars--;done("lesson('mid1','startMid1()')")}else bAsk()},1000)}
+else{$('m').innerHTML='<span class="try">Почти! Нажми «Подсказка» и выбери ещё раз.</span>';say('Почти. Нажми подсказку и попробуй ещё раз');b.style.opacity=.35;beep(250)}}
+
+/* ---------- MID: laws ---------- */
+let mi=0,mt;
+const lawsInfo=`<table><tr><th>Что постоянно</th><th>Процесс</th><th>Формула</th></tr>
+<tr><td>T</td><td>изотермический</td><td>p₁V₁ = p₂V₂</td></tr>
+<tr><td>p</td><td>изобарный</td><td>V₁/T₁ = V₂/T₂</td></tr>
+<tr><td>V</td><td>изохорный</td><td>p₁/T₁ = p₂/T₂</td></tr></table>
+<p class="small">T в кельвинах: T = t + 273. Адиабатный процесс — без теплообмена с окружающей средой.</p>`;
+function startMid2(){mi=0;mSort()}
+const sortQ=[['Постоянна температура T','Изотермический'],['Постоянно давление p','Изобарный'],['Постоянен объём V','Изохорный']];
+function mSort(){const items=shuffle(sortQ.map(x=>x[0]));let idx=0,pos=0;
+const q=sortQ[idx]; mi=0; sortStep()}
+function sortStep(){
+if(mi>=sortQ.length){mi=0;return mTask()}
+const x=sortQ[mi];const opts=shuffle(sortQ.map(s=>s[1]));
+app.innerHTML=`<div class="card"><div class="prog"><i style="width:${mi/sortQ.length*100}%"></i></div><h2>Часть 1. Какой это процесс?</h2><p class="stars" style="font-size:28px;letter-spacing:0">${x[0]}</p>
+<div class="msg" id="m"></div><div class="row">${opts.map(o=>`<button onclick="sortPick('${o}',this)">${o}</button>`).join('')}</div>
+<div class="row">${rb(x[0]+'. Какой это процесс?')}</div><details class="card"><summary>📋 Карточка формул</summary>${lawsInfo}</details></div>`;say('Какой это процесс? '+x[0])}
+function sortPick(o,b){if(o===sortQ[mi][1]){$('m').innerHTML='<span class="good">'+rp()+' ⭐</span>';say('Правильно!');beep(700);confetti();stars++;mi++;setTimeout(sortStep,900)}
+else{$('m').innerHTML='<span class="try">Подумай, какая величина не меняется. Попробуй ещё.</span>';say('Подумай, какая величина не меняется');b.style.opacity=.35;beep(250)}}
+
+function genTask(){
+const r=Math.floor(Math.random()*3);
+if(r===0){const p1=[100,200,300][Math.floor(Math.random()*3)],V1=[6,4,8][Math.floor(Math.random()*3)],k=2;
+ return{law:'Изотермический (T = const)',t:`Газ: p₁ = ${p1} кПа, V₁ = ${V1} л. Объём уменьшили в ${k} раза при постоянной T. Найди p₂ (кПа).`,ans:p1*k,u:'кПа',f:'p₂ = p₁·V₁ / V₂',h:`V₂ = ${V1/k} л. Подставь: ${p1}·${V1} / ${V1/k}`}}
+if(r===1){const p1=[100,150,200][Math.floor(Math.random()*3)],T1=300,T2=[360,450,600][Math.floor(Math.random()*3)];
+ return{law:'Изохорный (V = const)',t:`Газ в баллоне: p₁ = ${p1} кПа при T₁ = ${T1} К. Нагрели до T₂ = ${T2} К. Найди p₂ (кПа).`,ans:p1*T2/T1,u:'кПа',f:'p₂ = p₁·T₂ / T₁',h:`Подставь: ${p1}·${T2} / ${T1}`}}
+const V1=[2,3,4][Math.floor(Math.random()*3)],T1=[250,200,300][Math.floor(Math.random()*3)];
+return{law:'Изобарный (p = const)',t:`Газ: V₁ = ${V1} л при T₁ = ${T1} К. Нагрели до T₂ = ${T1*2} К при постоянном p. Найди V₂ (л).`,ans:V1*2,u:'л',f:'V₂ = V₁·T₂ / T₁',h:`Подставь: ${V1}·${T1*2} / ${T1}`}}
+let task,tries=0;
+function mTask(){
+if(mi>=4){stars--;return done("lesson('mid2','startMid2()')")}
+task=genTask();tries=0;
+app.innerHTML=`<div class="card"><div class="prog"><i style="width:${mi/4*100}%"></i></div><h2>Часть 2. Задача ${mi+1} из 4</h2>
+<p>${task.t}</p><p class="small">Дано → Найти → Решение → Ответ</p>
+<div class="row"><span>Ответ: </span><input type="number" id="ans" inputmode="decimal"><span>${task.u}</span></div>
+<div class="msg" id="m"></div>
+<div class="row"><button class="ok" onclick="mCheck()">Проверить</button><button class="soft" onclick="mHint(1)">💡 Подсказка 1</button><button class="soft" onclick="mHint(2)">💡 Подсказка 2</button></div>
+<div class="hint" id="hh" style="display:none"></div>
+<div class="row">${rb(task.t)}</div><details class="card"><summary>📋 Карточка формул</summary>${lawsInfo}</details></div>`;say(task.t)}
+function mHint(n){hnt++;const h=$('hh');h.style.display='block';h.innerHTML=n===1?'Это <b>'+task.law+'</b>. Формула: <b>'+task.f+'</b>':task.h;say(h.textContent)}
+function mCheck(){const v=parseFloat($('ans').value.replace(',','.'));
+if(Math.abs(v-task.ans)<0.01){$('m').innerHTML='<span class="good">'+rp()+' Верно: '+task.ans+' '+task.u+' ⭐</span>';say('Верно! Ответ '+task.ans+' '+task.u);beep(700);confetti();stars++;mi++;setTimeout(mTask,1400)}
+else{tries++;$('m').innerHTML='<span class="try">Пока не то. Открой подсказку и попробуй ещё раз.</span>';beep(250);if(tries>=2)mHint(2)}}
+/* ===== ANIMATION & INTERACTIVE ===== */
+function confetti(){const c=document.createElement('canvas');c.width=innerWidth;c.height=innerHeight;c.style.cssText='position:fixed;left:0;top:0;pointer-events:none;z-index:99';document.body.appendChild(c);const g=c.getContext('2d');const P=[];for(let i=0;i<70;i++)P.push({x:innerWidth/2,y:innerHeight/2,vx:(Math.random()-.5)*14,vy:-Math.random()*13-3,r:5+Math.random()*6,h:Math.random()*360,a:1});let f=0;(function t(){g.clearRect(0,0,c.width,c.height);P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.5;p.a-=.012;g.globalAlpha=Math.max(p.a,0);g.fillStyle=`hsl(${p.h},85%,55%)`;g.fillRect(p.x,p.y,p.r,p.r)});if(++f<90)requestAnimationFrame(t);else c.remove()})()}
+
+/* gas box */
+function GasBox(cv,st){const g=cv.getContext('2d'),W=cv.width,H=cv.height,N=34,pts=[];
+for(let i=0;i<N;i++)pts.push({x:Math.random()*200+20,y:Math.random()*(H-80)+40,a:Math.random()*6.28});
+(function loop(){if(!cv.isConnected)return;g.clearRect(0,0,W,H);
+const bw=60+st.V*(W-140);const sp=1.2+Math.sqrt(st.T)*1.1;
+// box
+g.fillStyle='#eef4ff';g.fillRect(30,30,bw,H-60);
+g.lineWidth=6;g.strokeStyle='#2d6cdf';g.strokeRect(30,30,bw,H-60);
+// piston
+g.fillStyle='#8895a7';g.fillRect(30+bw,30,22,H-60);g.fillRect(52+bw,H/2-8,Math.max(10,W-52-bw-30),16);g.fillStyle='#51627a';g.fillRect(W-40,H/2-30,18,60);
+// flame/ice
+g.font='46px serif';if(st.heat>0)g.fillText('🔥',30+bw/2-23,H-8);if(st.heat<0)g.fillText('❄️',30+bw/2-23,H-8);
+const col=`hsl(${Math.max(0,230-st.T*22)},85%,50%)`;
+pts.forEach(p=>{p.x+=Math.cos(p.a)*sp;p.y+=Math.sin(p.a)*sp;
+if(p.x<42){p.x=42;p.a=Math.PI-p.a}if(p.x>30+bw-12){p.x=30+bw-12;p.a=Math.PI-p.a}
+if(p.y<42){p.y=42;p.a=-p.a}if(p.y>H-42){p.y=H-42;p.a=-p.a}
+g.beginPath();g.arc(p.x,p.y,9,0,6.28);g.fillStyle=col;g.fill()});
+requestAnimationFrame(loop)})()}
+
+/* ---------- LOW: pump ---------- */
+function lowPump(next){let n=0;
+app.innerHTML=`<div class="card"><h2>Надуй шарик! Нажимай на насос</h2>
+<div style="position:relative;height:300px;text-align:center"><svg id="bsvg" viewBox="0 0 400 300" style="width:100%;height:300px">
+<g id="bal" style="transform-origin:200px 140px;transition:transform .35s"><ellipse cx="200" cy="130" rx="52" ry="62" fill="#ff5a6e"/><ellipse cx="182" cy="108" rx="12" ry="20" fill="#fff" opacity=".45"/><path d="M200 192 l-8 12 h16z" fill="#d93a50"/><path d="M200 204 q-12 30 4 50" stroke="#555" fill="none" stroke-width="3"/></g>
+<g id="pump"><rect x="120" y="262" width="160" height="30" rx="8" fill="#51627a"/><g id="pst" style="transition:transform .15s"><rect x="192" y="215" width="16" height="50" fill="#9aa8bb"/><rect x="170" y="205" width="60" height="12" rx="6" fill="#2d6cdf"/></g></g></svg></div>
+<div class="prog"><i id="pb"></i></div><div class="msg" id="m">Нажми на насос 5 раз</div>
+<div class="row"><button class="big" id="pump2">⬇️ Насос</button></div></div>`;
+say('Надуй шарик. Нажимай на насос пять раз.');
+$('pump2').onclick=()=>{n++;beep(300+n*60);
+$('pst').style.transform='translateY(30px)';setTimeout(()=>$('pst').style.transform='translateY(0)',180);
+const a=document.createElement('div');a.textContent='💨';a.style.cssText='position:absolute;left:46%;top:230px;font-size:34px;transition:all .7s;opacity:1';$('bsvg').parentNode.appendChild(a);setTimeout(()=>{a.style.top='90px';a.style.opacity='0'},20);setTimeout(()=>a.remove(),800);
+$('bal').style.transform=`scale(${.55+n*.2})`;$('pb').style.width=n*20+'%';
+if(n>=5){$('m').innerHTML='<span class="good">Шарик надулся! Внутри воздух!</span>';say('Шарик надулся. Внутри воздух.');rec('Надуть шарик насосом','tutor');confetti();beep(880,.3);$('pump2').style.display='none';
+app.querySelector('.card').insertAdjacentHTML('beforeend','<div class="row"><button class="ok" id="nx">Дальше ➜</button></div>');$('nx').onclick=next}}
+$('bal').style.transform='scale(.55)'}
+
+/* ---------- LOW: bubbles ---------- */
+function lowBubbles(next){let pop=0;
+app.innerHTML=`<div class="card"><h2>Пузыри! Подуй и лопни 5 пузырей</h2>
+<div id="sky" style="position:relative;height:340px;background:linear-gradient(#cfe8ff,#f3f9ff);border-radius:16px;overflow:hidden"></div>
+<div class="prog"><i id="pb"></i></div><div class="msg" id="m">Нажми «Подуть», потом нажимай на пузыри</div>
+<div class="row"><button class="big" onclick="blow()">💨 Подуть</button></div></div>`;
+say('Нажми подуть. Потом нажимай на пузыри, чтобы они лопнули.');
+window.blow=function(){beep(500,.1);for(let i=0;i<3;i++){const b=document.createElement('div');b.textContent='🫧';
+b.style.cssText=`position:absolute;left:${10+Math.random()*75}%;top:300px;font-size:${60+Math.random()*30}px;cursor:pointer;transition:top ${5+Math.random()*3}s linear`;
+b.onclick=()=>{if(b.dataset.p)return;b.dataset.p=1;b.textContent='✨';pop++;beep(800+pop*60,.12);$('pb').style.width=Math.min(pop,5)*20+'%';setTimeout(()=>b.remove(),400);
+if(pop===5){rec('Лопнуть 5 пузырей','tutor');$('m').innerHTML='<span class="good">Ты лопнул 5 пузырей! В пузырях был воздух!</span>';say('Молодец! В пузырях был воздух.');confetti();app.querySelector('.card').insertAdjacentHTML('beforeend','<div class="row"><button class="ok" id="nx">Дальше ➜</button></div>');$('nx').onclick=next}};
+$('sky').appendChild(b);setTimeout(()=>b.style.top='-90px',30);setTimeout(()=>b.remove(),9000)}}}
+
+/* ---------- MID1 lab ---------- */
+function mid1Lab(next){const st={T:4,V:.8,heat:0};
+const M=[['🔥 Нагрей газ: частицы побегут быстрее',()=>st.T>=7],['❄️ Охлади газ: частицы замедлятся',()=>st.T<=2.5],['⬅️ Сожми газ поршнем: стрелка давления вырастет',()=>st.V<=.4]];
+const done=[false,false,false];
+app.innerHTML=`<div class="card"><h2>Попробуй сам! Лаборатория газа</h2>
+<canvas id="cv" width="700" height="300" style="width:100%;border-radius:12px;background:#fff"></canvas>
+<div class="msg" id="m"></div>
+<div class="row"><button onclick="L.h(1)">🔥 Нагреть</button><button onclick="L.h(-1)">❄️ Охладить</button><button onclick="L.v(-1)">⬅️ Сжать</button><button onclick="L.v(1)">➡️ Отпустить</button></div>
+<div class="row"><div>Давление: <b id="pr">—</b> &nbsp; Температура: <b id="tt">—</b></div></div>
+<div id="ml" style="font-size:22px;margin:8px 0"></div></div>`;
+GasBox($('cv'),st);
+function upd(){ $('tt').textContent=st.T>=6?'горячо 🔥':(st.T<=3?'холодно ❄️':'тепло');const p=st.T/st.V;$('pr').textContent=p>14?'большое ⬆️⬆️':p>9?'среднее ⬆️':'малое';
+M.forEach((m,i)=>{if(!done[i]&&m[1]()){done[i]=true;rec('Лаборатория: '+m[0].replace(/^\S+\s/,'').split(':')[0],'tutor');confetti();beep(700);say('Получилось! '+(i==0?'Горячий газ расширяется, частицы быстрые.':i==1?'Холодный газ — частицы медленные.':'Когда газ сжали, давление выросло.'))}});
+$('ml').innerHTML=M.map((m,i)=>(done[i]?'✅ ':'⬜ ')+m[0]).join('<br>');
+if(done.every(x=>x)&&!$('nx')){$('m').innerHTML='<span class="good">Ты всё сделал! Молодец!</span>';app.querySelector('.card').insertAdjacentHTML('beforeend','<div class="row"><button class="ok" id="nx">Дальше ➜</button></div>');$('nx').onclick=next}}
+window.L={h(d){st.T=Math.min(10,Math.max(1,st.T+d*1.5));st.heat=d;setTimeout(()=>st.heat=0,700);beep(300+st.T*40,.1);upd()},v(d){st.V=Math.min(1,Math.max(.25,st.V+d*.15));beep(250,.1);upd()}};
+upd();say('Попробуй сам. Нажимай на кнопки и смотри, что делает газ. '+M.map(m=>m[0]).join('. '))}
+
+/* ---------- MID2 lab ---------- */
+function mid2Lab(next){const st={T:5,V:.6,heat:0};let p=100,Tk=300,Vl=6,mode=0,moved=[false,false,false];
+const modes=[{n:'Изотермический (T = const)',lock:'T',txt:'Температура не меняется. Двигай ползунок объёма V и смотри на давление p.'},{n:'Изобарный (p = const)',lock:'p',txt:'Давление не меняется. Двигай ползунок температуры T и смотри на объём V.'},{n:'Изохорный (V = const)',lock:'V',txt:'Объём не меняется. Двигай ползунок температуры T и смотри на давление p.'}];
+function render(){const m=modes[mode];
+app.innerHTML=`<div class="card"><h2>Лаборатория: ${m.n}</h2><p>${m.txt}</p>
+<canvas id="cv" width="700" height="260" style="width:100%;border-radius:12px;background:#fff"></canvas>
+<canvas id="gr" width="700" height="300" style="width:100%;border-radius:12px;background:#fff;margin-top:8px"></canvas><table><tr><th>p, кПа</th><th>V, л</th><th>T, К</th></tr><tr><td id="vp">100</td><td id="vv">6</td><td id="vt">300</td></tr></table>
+<div class="row" style="margin-top:8px"><label>Объём V: <input type="range" id="sv" min="2" max="12" step="1" value="${Vl}" ${m.lock!='T'&&m.lock!='V'?'disabled':''}${m.lock=='V'?' disabled':''}></label></div>
+<div class="row"><label>Температура T: <input type="range" id="stt" min="200" max="600" step="50" value="${Tk}" ${m.lock=='T'?'disabled':''}></label></div>
+<div class="msg" id="m"></div><div class="row">${rb(m.n+'. '+m.txt)}${mode<2?'':''}</div></div>`;
+GasBox($('cv'),st);
+function drawLive(){const cfg=[{xl:'V, л',yl:'p, кПа',xmax:12,ymax:320,xs:2,ys:40,curve:[2,3,4,5,6,8,10,12].map(v=>[v,600/v]),cur:[Vl,p]},{xl:'T, К',yl:'V, л',xmax:650,ymax:14,xs:100,ys:2,curve:[[200,4],[600,12]],cur:[Tk,Vl]},{xl:'T, К',yl:'p, кПа',xmax:650,ymax:220,xs:100,ys:20,curve:[[200,66.7],[600,200]],cur:[Tk,p]}][mode];drawGraph($('gr'),cfg,[],cfg.cur,false)}
+function recalc(from){ if(mode==0){Vl=+$('sv').value;p=100*(Tk/300)*(6/Vl)} else if(mode==1){Tk=+$('stt').value;Vl=6*Tk/300;p=100;$('sv').value=Vl}else{Tk=+$('stt').value;p=100*Tk/300;Vl=6}
+ drawLive();$('vp').textContent=Math.round(p*10)/10;$('vv').textContent=Math.round(Vl*10)/10;$('vt').textContent=Tk;st.T=Tk/60;st.V=Math.min(1,Vl/12+.05);
+ if(from&&!moved[mode]){moved[mode]=true;rec('Лаборатория: '+m.n,'tutor');confetti();beep(700);const t=mode==0?'Объём уменьшился, давление выросло. Произведение p на V осталось одинаковым.':mode==1?'Температура выросла, объём вырос. Отношение V к T осталось одинаковым.':'Температура выросла, давление выросло. Отношение p к T осталось одинаковым.';$('m').innerHTML='<span class="good">'+t+'</span>';say(t);
+ app.querySelector('.card').insertAdjacentHTML('beforeend','<div class="row"><button class="ok" id="nx">'+(mode<2?'Следующий процесс ➜':'Дальше ➜')+'</button></div>');$('nx').onclick=()=>{if(mode<2){mode++;render()}else next()}}}
+$('sv').oninput=()=>recalc(1);$('stt').oninput=()=>recalc(1);recalc(0);
+say(m.n+'. '+m.txt)}
+Vl=6;Tk=300;render()}
+
+/* new flows */
+function startLow(){RES=[];curLevel='low';li=0;lowPump(()=>lowBubbles(()=>lowAsk()))}
+function startMid1(){RES=[];curLevel='mid1';bi=0;mid1Lab(()=>bAsk())}
+function startMid2(){mis=0;hnt=0;RES=[];curLevel='mid2';mi=0;mid2Lab(()=>mSort())}
+
+/* ===== GRAPHS ===== */
+function drawGraph(cv,c,pts,cur,line){const g=cv.getContext('2d'),W=cv.width,H=cv.height,L=70,B=H-50,R=W-20,T0=20;g.clearRect(0,0,W,H);g.fillStyle='#fff';g.fillRect(0,0,W,H);
+const X=x=>L+x/c.xmax*(R-L),Y=y=>B-y/c.ymax*(B-T0);g.font='16px sans-serif';g.strokeStyle='#cbd7ea';g.lineWidth=1;g.fillStyle='#1f2d3d';
+for(let x=0;x<=c.xmax+1e-9;x+=c.xs){g.beginPath();g.moveTo(X(x),T0);g.lineTo(X(x),B);g.stroke();g.textAlign='center';g.fillText(x,X(x),B+20)}
+for(let y=0;y<=c.ymax+1e-9;y+=c.ys){g.beginPath();g.moveTo(L,Y(y));g.lineTo(R,Y(y));g.stroke();g.textAlign='right';g.fillText(y,L-8,Y(y)+5)}
+g.strokeStyle='#1f2d3d';g.lineWidth=3;g.beginPath();g.moveTo(L,T0);g.lineTo(L,B);g.lineTo(R,B);g.stroke();
+g.textAlign='center';g.font='bold 18px sans-serif';g.fillText(c.xl,(L+R)/2,H-8);g.save();g.translate(16,(T0+B)/2);g.rotate(-Math.PI/2);g.fillText(c.yl,0,0);g.restore();
+if(c.curve){g.strokeStyle='#9db8ee';g.lineWidth=3;g.setLineDash([8,6]);g.beginPath();c.curve.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.stroke();g.setLineDash([])}
+if(line&&pts.length>1){g.strokeStyle='#d22';g.lineWidth=4;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.stroke()}
+g.fillStyle='#d22';pts.forEach(p=>{g.beginPath();g.arc(X(p[0]),Y(p[1]),9,0,6.28);g.fill()});
+if(cur){g.fillStyle='#2e9e5b';g.beginPath();g.arc(X(cur[0]),Y(cur[1]),11,0,6.28);g.fill();g.strokeStyle='#fff';g.lineWidth=3;g.stroke()}
+return{X,Y,L,R,B,T0}}
+const GR=[
+{n:'Изотерма (T = const): p и V',xl:'V, л',yl:'p, кПа',xmax:7,ymax:350,xs:1,ys:50,pts:[[6,100],[4,150],[3,200],[2,300]],fx:x=>'V = '+x+' л',fy:y=>'p = '+y+' кПа',ex:'Когда V уменьшается, p растёт. Произведение p·V одинаково: 600.'},
+{n:'Изобара (p = const): V и T',xl:'T, К',yl:'V, л',xmax:500,ymax:6,xs:100,ys:1,pts:[[200,2],[300,3],[400,4],[500,5]],fx:x=>'T = '+x+' К',fy:y=>'V = '+y+' л',ex:'Точки лежат на прямой: V растёт вместе с T. Отношение V/T одинаково.'},
+{n:'Изохора (V = const): p и T',xl:'T, К',yl:'p, кПа',xmax:600,ymax:200,xs:150,ys:50,pts:[[150,50],[300,100],[450,150],[600,200]],fx:x=>'T = '+x+' К',fy:y=>'p = '+y+' кПа',ex:'Точки лежат на прямой: p растёт вместе с T. Отношение p/T одинаково.'}];
+function graphGame(next){let gi=0;gStart();
+function gStart(){const G=GR[gi];let placed=[],k=0;
+app.innerHTML=`<div class="card"><h2>Построй график ${gi+1} из 3</h2><p><b>${G.n}</b></p><div class="msg" id="m"></div><canvas id="gc" width="700" height="420" style="width:100%;border:3px solid var(--blue);border-radius:12px;cursor:crosshair"></canvas>
+<div class="row"><button class="soft" onclick="gHint()">💡 Подсказка</button>${rb('Построй график. Нажимай на сетку, чтобы поставить точки по таблице.')}</div></div>`;
+const cv=$('gc');let geo=drawGraph(cv,G,placed,null,false);
+function ask(){const p=G.pts[k];$('m').innerHTML='Поставь точку: <b>'+G.fx(p[0])+'</b>, <b>'+G.fy(p[1])+'</b>';say('Поставь точку. '+G.fx(p[0])+', '+G.fy(p[1]))}
+window.gHint=()=>{hnt++;const p=G.pts[k];if(!p)return;$('m').innerHTML='<span class="try">Найди '+G.fx(p[0])+' на нижней оси, потом '+G.fy(p[1])+' на левой. Точка там, где линии пересекаются.</span>';say('Найди значение на нижней оси, потом на левой оси.')};
+cv.onclick=e=>{if(k>=G.pts.length)return;const r=cv.getBoundingClientRect(),sx=cv.width/r.width;const mx=(e.clientX-r.left)*sx,my=(e.clientY-r.top)*sx;
+const gx=Math.round(((mx-geo.L)/(geo.R-geo.L)*G.xmax)/G.xs)*G.xs,gy=Math.round(((geo.B-my)/(geo.B-geo.T0)*G.ymax)/G.ys)*G.ys;const p=G.pts[k];
+if(gx===p[0]&&gy===p[1]){placed.push(p);k++;beep(700);drawGraph(cv,G,placed,null,false);
+ if(k===G.pts.length){rec('График: '+G.n,mis,hnt);mis=0;hnt=0;drawGraph(cv,G,placed,null,true);confetti();stars++;say('Молодец! График готов. '+G.ex);$('m').innerHTML='<span class="good">График готов! ⭐</span><br><span style="font-size:20px">'+G.ex+'</span>';
+ app.querySelector('.card').insertAdjacentHTML('beforeend','<div class="row"><button class="ok" id="nx">'+(gi<2?'Следующий график ➜':'Дальше ➜')+'</button></div>');$('nx').onclick=()=>{gi++;gi<3?gStart():next()}}else{say('Правильно');ask()}}
+else{mis++;beep(250);$('m').innerHTML='<span class="try">Почти! Нажми «Подсказка» и попробуй ещё раз.</span>';say('Попробуй ещё раз')}};
+ask()}}
+function startMid2(){mi=0;mid2Lab(()=>graphGame(()=>mSort()))}
+
+/* ===== ASSESSMENT ===== */
+let RES=[],mis=0,hnt=0,curLevel='';
+const LVL={low:'Низкий уровень',mid1:'Уровень ниже среднего',mid2:'Средний уровень'};
+const PTS=[100,80,60,40,40];
+function rec(name,m,h){const tutor=(m==='tutor');const pts=tutor?100:PTS[Math.min(4,(m||0)+(h||0))];RES=RES.filter(r=>r.name!==name);RES.push({name,pts,tutor,m:tutor?0:m,h:tutor?0:h})}
+function grade(p){return p>=95?'A':p>=90?'A−':p>=85?'B+':p>=80?'B':p>=75?'B−':p>=70?'C+':p>=65?'C':p>=60?'C−':p>=55?'D+':p>=50?'D':'F'}
+function avg(){return RES.length?Math.round(RES.reduce((s,r)=>s+r.pts,0)/RES.length):0}
+function showResults(next){const a=avg(),zach=a>=50;
+const msg=a>=80?'Ты справился отлично!':a>=50?'Хорошо получилось! Ты молодец!':'Ты старался! Давай попробуем ещё раз — получится лучше!';
+app.innerHTML=`<div class="card"><div class="emoji">🏆</div><h2 style="text-align:center">${msg}</h2><p style="text-align:center;font-size:24px">${END}</p>
+<p class="stars">${'⭐'.repeat(Math.max(1,Math.round(a/20)))}</p>
+<p style="text-align:center;font-size:44px;margin:4px"><b>${a} баллов</b></p>
+<p style="text-align:center;font-size:26px">Оценка: <b>${grade(a)}</b> · ${zach?'<span class="good">зачтено ✅</span>':'<span class="try">ещё потренируемся</span>'}</p>
+<div class="row">${rb(msg+' У тебя '+a+' баллов.')}<button class="ok" onclick="${next}">Играть ещё</button><button class="alt" onclick="home()">В меню</button></div></div>
+<div class="card" id="rep"><h2>📋 Лист оценивания (для педагога)</h2>
+<div class="row"><label>ФИО: <input type="text" id="fio" style="width:260px"></label><label>Дата: <input type="text" id="dt" style="width:150px" value="${new Date().toLocaleDateString('ru-RU')}"></label></div>
+<p><b>${LVL[curLevel]||''}</b> · Тема 10. Газовые законы</p>
+<table id="rt"><tr><th>№</th><th>Задание</th><th>Ошибки / подсказки</th><th>Баллы</th></tr>
+${RES.map((r,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${r.name}</td><td>${r.tutor?'оценивает педагог':r.m+' / '+r.h}</td><td>${r.tutor?`<select onchange="RES[${i}].pts=+this.value;updRes()" style="font-size:18px">${[100,80,60,40,0].map(v=>`<option ${v===r.pts?'selected':''}>${v}</option>`).join('')}</select>`:r.pts}</td></tr>`).join('')}
+<tr><th colspan="3" style="text-align:right">Средний балл</th><th id="tot">${a}</th></tr></table>
+<p id="gr2" style="font-size:22px"><b>Оценка: ${grade(a)} · ${zach?'зачтено':'не зачтено'}</b></p>
+<p class="small">Баллы за задание: без ошибок и подсказок — 100; одна ошибка или подсказка — 80; две — 60; три и больше — 40; не выполнено — 0. Задания-действия (опыты, лаборатория) оценивает педагог или тьютор по уровню помощи. Шкала: A 95–100, A− 90–94, B+ 85–89, B 80–84, B− 75–79, C+ 70–74, C 65–69, C− 60–64, D+ 55–59, D 50–54, F 0–49. Зачёт — от 50 баллов.</p>
+<div class="row"><button class="soft" onclick="window.print()">🖨️ Печать / PDF</button></div></div>`;
+say(msg+' '+END+' У тебя '+a+' баллов.');confetti()}
+function updRes(){const a=avg();$('tot').textContent=a;$('gr2').innerHTML='<b>Оценка: '+grade(a)+' · '+(a>=50?'зачтено':'не зачтено')+'</b>'}
+function done(next){showResults(next)}
+
+(function(){const oLA=lowAsk,oLP=lowPick,oBA=bAsk,oBP=bPick,oSS=sortStep,oSP=sortPick,oMT=mTask,oMC=mCheck;
+window.lowAsk=function(){mis=0;hnt=0;oLA()};
+window.lowPick=function(ok,b){const n='Вопрос: '+lowQ[li].q;if(ok)rec(n,mis,hnt);else mis++;oLP(ok,b)};
+window.bAsk=function(){mis=0;hnt=0;oBA()};
+window.bPick=function(ok,b){const n='Вопрос: '+bq[bi].q;if(ok)rec(n,mis,hnt);else mis++;oBP(ok,b)};
+window.sortStep=function(){mis=0;hnt=0;oSS()};
+window.sortPick=function(o,b){const ok=o===sortQ[mi][1];if(ok)rec('Процесс: '+sortQ[mi][0],mis,hnt);else mis++;oSP(o,b)};
+window.mTask=function(){mis=0;hnt=0;oMT()};
+window.mCheck=function(){const v=parseFloat($('ans').value.replace(',','.'));if(Math.abs(v-task.ans)<0.01)rec('Задача '+(mi+1)+': '+task.law,mis,hnt);else mis++;oMC()};
+})();
+
+const END='Огонёк и Холодок всё поняли и помирились! Остров Газов говорит тебе «спасибо»!';const STORY=['На Газовом острове живут два друга-дракончика: Огонёк и Холодок.', 'Огонёк любит греть. Холодок любит морозить. Они спорят: что делает с газом тепло, а что — холод?', 'Помоги им разобраться! Поиграй в лаборатории газа и ответь на вопросы.', 'Тогда дракончики помирятся.'];
+function home(){const txt=STORY.join(' ');
+app.innerHTML=`<div class="card"><div class="emoji">🐉❄️</div><h2 style="text-align:center">Дракончики с Газового острова</h2>
+${STORY.map(p=>'<p style="text-align:center;font-size:26px">'+p+'</p>').join('')}
+<div class="row">${rb(txt)}</div><div class="row"><button class="big ok" onclick="lesson('mid1','startMid1()')">🐉 Помочь дракончикам!</button></div>
+<p class="stars" id="st">${starsHTML()}</p></div>`;say(txt)}
+
+home();
+</script></body></html>
